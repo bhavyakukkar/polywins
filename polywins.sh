@@ -32,11 +32,19 @@ main() {
 		# ...print new window list every time
 		# the active window changes or
 		# a window is opened or closed
-		xprop -root -spy _NET_CLIENT_LIST _NET_ACTIVE_WINDOW |
-			while IFS= read -r _; do
-				generate_window_list
-			done
+        # or name of any window changed
+        rm -f /tmp/polywins
+        mkfifo /tmp/polywins
+        xprop -root -spy _NET_CLIENT_LIST _NET_ACTIVE_WINDOW > /tmp/polywins &
 
+        IFS=", "
+        for client in $(xprop -root _NET_CLIENT_LIST|grep -oe "# .*$"|cut -c 3-); do
+            xprop -id $client -spy WM_NAME > /tmp/polywins &
+        done
+
+		while IFS= read -r _; do
+				generate_window_list
+		done < /tmp/polywins
 	# If arguments are passed, run requested on-click function
 	else
 		"$@"
